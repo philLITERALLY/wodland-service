@@ -9,13 +9,14 @@ import (
 )
 
 // GetActivities will get and return Activities
-func GetActivities(db *sql.DB, filters *data.ActivityFilter) ([]data.Activity, error) {
+func GetActivities(db *sql.DB, filters *data.ActivityFilter, userID int) ([]data.Activity, error) {
 	var dbActivities = []data.Activity{}
 
 	selectQuery := psql.
 		Select("activity.id, date, time_taken, meps, exertion, notes, wod.*").
 		From("activity").
-		Join("wod ON wod.id = activity.wod_id")
+		Join("wod ON wod.id = activity.wod_id").
+		Where(sq.Eq{"user_id": userID})
 
 	selectQuery = processActivityFilters(selectQuery, filters)
 	selectQuery = selectQuery.Limit(10)

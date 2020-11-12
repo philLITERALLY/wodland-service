@@ -13,7 +13,7 @@ import (
 var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 // GetWOD will get and return an individual WOD
-func GetWOD(db *sql.DB, wodID string) (data.WOD, error) {
+func GetWOD(db *sql.DB, wodID string, userID int) (data.WOD, error) {
 	var dbWOD = data.WOD{}
 	var dbActivities []data.Activity
 
@@ -22,6 +22,7 @@ func GetWOD(db *sql.DB, wodID string) (data.WOD, error) {
 		From("wod").
 		LeftJoin("activity ON activity.wod_id = wod.id").
 		Where(sq.Eq{"wod.id": wodID}).
+		Where(sq.Eq{"activity.user_id": userID}).
 		GroupBy("wod.id")
 	sqlWODQuery, args, _ := wodQuery.ToSql()
 
@@ -34,7 +35,8 @@ func GetWOD(db *sql.DB, wodID string) (data.WOD, error) {
 	activityQuery := psql.
 		Select("id, date, time_taken, meps, exertion, notes").
 		From("activity").
-		Where(sq.Eq{"wod_id": wodID})
+		Where(sq.Eq{"wod_id": wodID}).
+		Where(sq.Eq{"activity.user_id": userID})
 	sqlActivityQuery, args, _ := activityQuery.ToSql()
 
 	rows, err := db.Query(sqlActivityQuery, args...)
@@ -61,13 +63,14 @@ func GetWOD(db *sql.DB, wodID string) (data.WOD, error) {
 }
 
 // GetWODs will get and return WODs
-func GetWODs(db *sql.DB, filters *data.WODFilter) ([]data.WOD, error) {
+func GetWODs(db *sql.DB, filters *data.WODFilter, userID int) ([]data.WOD, error) {
 	var dbWODs = []data.WOD{}
 
 	selectQuery := psql.
 		Select("wod.*, COUNT(activity.id), MIN(activity.time_taken)").
 		From("wod").
 		LeftJoin("activity ON activity.wod_id = wod.id").
+		Where(sq.Eq{"activity.user_id": userID}).
 		GroupBy("wod.id")
 
 	selectQuery = processWODFilters(selectQuery, filters)

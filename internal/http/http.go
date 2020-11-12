@@ -2,6 +2,7 @@ package http
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,12 +12,30 @@ import (
 	"github.com/philLITERALLY/wodland-service/internal/data/db"
 )
 
+var usernameKey = "username"
+
+// GetUserID will return ID of logged in User
+func GetUserID(c *gin.Context) (int, error) {
+	user, exists := c.Get(usernameKey)
+	if !exists {
+		return 0, errors.New("Error fetching logged in user")
+	}
+
+	return user.(*data.User).ID, nil
+}
+
 // GetWOD will get and return an individual WOD
 func GetWOD(dataSource *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := GetUserID(c)
+		if err != nil {
+			fmt.Printf("%+v", err)
+			c.JSON(http.StatusBadRequest, err)
+		}
+
 		wodID := c.Param("wodID")
 
-		wodResult, err := db.GetWOD(dataSource, wodID)
+		wodResult, err := db.GetWOD(dataSource, wodID, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error reading wod: %q", err))
 			return
@@ -29,13 +48,19 @@ func GetWOD(dataSource *sql.DB) gin.HandlerFunc {
 // GetWODs will get and return WODs
 func GetWODs(dataSource *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := GetUserID(c)
+		if err != nil {
+			fmt.Printf("%+v", err)
+			c.JSON(http.StatusBadRequest, err)
+		}
+
 		filters, err := data.WODFilters(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, fmt.Sprintf("Error reading filters: %q", err))
 			return
 		}
 
-		wodResult, err := db.GetWODs(dataSource, filters)
+		wodResult, err := db.GetWODs(dataSource, filters, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error reading wods: %q", err))
 			return
@@ -49,7 +74,14 @@ func GetWODs(dataSource *sql.DB) gin.HandlerFunc {
 func AddWOD(dataSource *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		wodInput := data.CreateWOD{}
-		err := c.Bind(&wodInput)
+
+		userID, err := GetUserID(c)
+		if err != nil {
+			fmt.Printf("%+v", err)
+			c.JSON(http.StatusBadRequest, err)
+		}
+
+		err = c.Bind(&wodInput)
 		if err != nil {
 			fmt.Printf("error binding request input: %+v", err)
 			c.JSON(http.StatusBadRequest, fmt.Sprintf("Error with WOD details: %q", err))
@@ -70,7 +102,7 @@ func AddWOD(dataSource *sql.DB) gin.HandlerFunc {
 			}
 		}
 
-		err = db.CreateWOD(dataSource, wodInput)
+		err = db.CreateWOD(dataSource, wodInput, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error creating WOD: %q", err))
 			return
@@ -87,13 +119,19 @@ func AddWOD(dataSource *sql.DB) gin.HandlerFunc {
 // GetActivities will get and return Activities
 func GetActivities(dataSource *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := GetUserID(c)
+		if err != nil {
+			fmt.Printf("%+v", err)
+			c.JSON(http.StatusBadRequest, err)
+		}
+
 		filters, err := data.ActivityFilters(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, fmt.Sprintf("Error reading filters: %q", err))
 			return
 		}
 
-		activityResult, err := db.GetActivities(dataSource, filters)
+		activityResult, err := db.GetActivities(dataSource, filters, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error reading activities: %q", err))
 			return
@@ -107,7 +145,14 @@ func GetActivities(dataSource *sql.DB) gin.HandlerFunc {
 func AddActivity(dataSource *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		activityInput := data.ActivityInput{}
-		err := c.Bind(&activityInput)
+
+		userID, err := GetUserID(c)
+		if err != nil {
+			fmt.Printf("%+v", err)
+			c.JSON(http.StatusBadRequest, err)
+		}
+
+		err = c.Bind(&activityInput)
 		if err != nil {
 			fmt.Printf("error binding request input: %+v", err)
 			c.JSON(http.StatusBadRequest, fmt.Sprintf("Error with Activity details: %q", err))
@@ -124,7 +169,7 @@ func AddActivity(dataSource *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		err = db.CreateActivity(dataSource, activityInput)
+		err = db.CreateActivity(dataSource, activityInput, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error creating activity: %q", err))
 			return

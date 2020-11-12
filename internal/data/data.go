@@ -15,6 +15,20 @@ import (
 	_ "github.com/heroku/x/hmetrics/onload"
 )
 
+// Login is the data required for a user to login
+type Login struct {
+	Username string `form:"username" json:"username" binding:"required"`
+	Password string `form:"password" json:"password" binding:"required"`
+}
+
+// User is the data object for a User
+type User struct {
+	ID       int    `json:"userID"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Role     string `json:"role"`
+}
+
 // WODInput is the data required to create a WOD
 type WODInput struct {
 	Source    *string `json:"source"`

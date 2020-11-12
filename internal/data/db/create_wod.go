@@ -8,11 +8,11 @@ import (
 )
 
 // CreateWOD will create a WOD (and add an attempt if supplied)
-func CreateWOD(db *sql.DB, WOD data.CreateWOD) error {
+func CreateWOD(db *sql.DB, WOD data.CreateWOD, userID int) error {
 	wodQuery := psql.
 		Insert("wod").
-		Columns("source, creation_t, wod, picture, type").
-		Values(WOD.Source, WOD.CreationT, WOD.Exercise, WOD.Picture, WOD.Type).
+		Columns("source, creation_t, wod, picture, type, created_by").
+		Values(WOD.Source, WOD.CreationT, WOD.Exercise, WOD.Picture, WOD.Type, userID).
 		Suffix("RETURNING \"id\"")
 	sqlWODQuery, wodArgs, _ := wodQuery.ToSql()
 
@@ -26,7 +26,7 @@ func CreateWOD(db *sql.DB, WOD data.CreateWOD) error {
 		activity := WOD.ActivityInput
 		activity.WODID = &wodID
 
-		activityErr := CreateActivity(db, *activity)
+		activityErr := CreateActivity(db, *activity, userID)
 		if activityErr != nil {
 			return activityErr
 		}
